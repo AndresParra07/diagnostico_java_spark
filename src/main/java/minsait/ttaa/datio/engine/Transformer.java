@@ -1,5 +1,6 @@
 package minsait.ttaa.datio.engine;
 
+import minsait.ttaa.datio.common.naming.PlayerOutput;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -19,9 +20,23 @@ public class Transformer extends Writer {
     public Transformer(@NotNull SparkSession spark) {
         this.spark = spark;
         Dataset<Row> df = readInput();
+        df = df.select(col("short_name"), col("long_name"), col("age"),
+                col("height_cm"),
+                col("weight_kg"),
+                col(nationality.getName()),
+                col("club_name"),
+                col(overall.getName()),
+                col("potential"),
+                col("team_position"));
+
+
+        df = setPlayerCat(df);
 
         df.printSchema();
+        df.show(100);
 
+
+        System.exit(0);
         df = cleanData(df);
         df = exampleWindowFunction(df);
         df = columnSelection(df);
@@ -97,6 +112,27 @@ public class Transformer extends Writer {
     }
 
 
+
+    /**
+     *
+     * @param df is a DataFrame with players information
+     * @return add the column "player_cat" to the dataframe
+     */
+    private Dataset<Row> setPlayerCat(Dataset<Row> df) {
+        WindowSpec w = Window
+                .partitionBy(nationality.column(), teamPosition.column())
+                .orderBy(overall.column().desc());
+
+        Column rank = rank().over(w);
+
+        Column rule = when(rank.$less$eq(3), "A")
+                .when(rank.$less$eq(8), "B")
+                .otherwise("C");
+
+        df = df.withColumn(playerCat.getName(), rule);
+
+        return df;
+    }
 
 
 }
