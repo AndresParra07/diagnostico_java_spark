@@ -9,6 +9,10 @@ import org.apache.spark.sql.expressions.Window;
 import org.apache.spark.sql.expressions.WindowSpec;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import static minsait.ttaa.datio.common.Common.*;
 import static minsait.ttaa.datio.common.naming.PlayerInput.*;
 import static minsait.ttaa.datio.common.naming.PlayerOutput.*;
@@ -32,11 +36,18 @@ public class Transformer extends Writer {
 
         df = setPlayerCat(df);
 
+
+        df = setPotentialVsOverall(df);
+        df = filterByPlayerCatAndPotentialVsOveral(df);
+
+
+
         df.printSchema();
-        df.show(100);
+        df.show();
 
 
         System.exit(0);
+
         df = cleanData(df);
         df = exampleWindowFunction(df);
         df = columnSelection(df);
@@ -102,6 +113,7 @@ public class Transformer extends Writer {
 
         Column rank = rank().over(w);
 
+
         Column rule = when(rank.$less(10), "A")
                 .when(rank.$less(50), "B")
                 .otherwise("C");
@@ -112,11 +124,9 @@ public class Transformer extends Writer {
     }
 
 
-
     /**
-     *
-     * @param df is a DataFrame with players information
-     * @return add the column "player_cat" to the dataframe
+     * @param df is a DataSet with players information
+     * @return add the column "player_cat" to the DataSet
      */
     private Dataset<Row> setPlayerCat(Dataset<Row> df) {
         WindowSpec w = Window
@@ -127,6 +137,7 @@ public class Transformer extends Writer {
 
         Column rule = when(rank.$less$eq(3), "A")
                 .when(rank.$less$eq(8), "B")
+                .when(rank.$less$eq(18), "D")
                 .otherwise("C");
 
         df = df.withColumn(playerCat.getName(), rule);
@@ -134,5 +145,27 @@ public class Transformer extends Writer {
         return df;
     }
 
+
+    /**
+     * @param df is a DataSet with players information
+     * @return add the column "potential_vs_overall" to the DataSet
+     */
+    private Dataset<Row> setPotentialVsOverall(Dataset<Row> df) {
+
+        return df.withColumn(potentialVsOverall.getName(), col(potential.getName()).divide(col(overall.getName())));
+    }
+
+    /**
+     * @param df is a DataSet with players information
+     * @return filter players by "potential_vs_overall" and "player_cat"
+     */
+    private Dataset<Row> filterByPlayerCatAndPotentialVsOveral(Dataset<Row> df) {
+
+       return df
+                .filter((playerCat.column().equalTo("A").or(playerCat.column().equalTo("B"))).or(
+                        (playerCat.column().equalTo("C").or(playerCat.column().equalTo("D")))
+                                .and(potentialVsOverall.column().$greater(1.25))
+                ));
+    }
 
 }
