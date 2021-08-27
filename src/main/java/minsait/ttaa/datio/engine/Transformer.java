@@ -26,14 +26,9 @@ public class Transformer extends Writer {
         Dataset<Row> df = readInput();
 
         df = selectInitialFields(df);
-
-
         df = setPlayerCat(df);
-
-
         df = setPotentialVsOverall(df);
         df = filterByPlayerCatAndPotentialVsOveral(df);
-
 
         // df = cleanData(df);
         // df = exampleWindowFunction(df);
