@@ -24,14 +24,8 @@ public class Transformer extends Writer {
     public Transformer(@NotNull SparkSession spark) {
         this.spark = spark;
         Dataset<Row> df = readInput();
-        df = df.select(col("short_name"), col("long_name"), col("age"),
-                col("height_cm"),
-                col("weight_kg"),
-                col(nationality.getName()),
-                col("club_name"),
-                col(overall.getName()),
-                col("potential"),
-                col("team_position"));
+
+        df = selectInitialFields(df);
 
 
         df = setPlayerCat(df);
@@ -41,23 +35,17 @@ public class Transformer extends Writer {
         df = filterByPlayerCatAndPotentialVsOveral(df);
 
 
+        // df = cleanData(df);
+        // df = exampleWindowFunction(df);
+        // df = columnSelection(df);
 
-        df.printSchema();
-        df.show();
-
-
-        System.exit(0);
-
-        df = cleanData(df);
-        df = exampleWindowFunction(df);
-        df = columnSelection(df);
 
         // for show 100 records after your transformations and show the Dataset schema
         df.show(100, false);
         df.printSchema();
 
         // Uncomment when you want write your final output
-        //write(df);
+        write(df);
     }
 
     private Dataset<Row> columnSelection(Dataset<Row> df) {
@@ -161,11 +149,28 @@ public class Transformer extends Writer {
      */
     private Dataset<Row> filterByPlayerCatAndPotentialVsOveral(Dataset<Row> df) {
 
-       return df
+        return df
                 .filter((playerCat.column().equalTo("A").or(playerCat.column().equalTo("B"))).or(
                         (playerCat.column().equalTo("C").or(playerCat.column().equalTo("D")))
                                 .and(potentialVsOverall.column().$greater(1.25))
                 ));
     }
 
+
+    /**
+     * @param df is a DataSet with players information
+     * @return select initial fields
+     */
+    private Dataset<Row> selectInitialFields(Dataset<Row> df) {
+        return df.select(shortName.column(),
+                longName.column(),
+                age.column(),
+                heightCm.column(),
+                weightKg.column(),
+                nationality.column(),
+                clubName.column(),
+                overall.column(),
+                potential.column(),
+                teamPosition.column());
+    }
 }
