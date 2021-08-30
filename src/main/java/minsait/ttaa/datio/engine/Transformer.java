@@ -1,6 +1,6 @@
 package minsait.ttaa.datio.engine;
 
-import minsait.ttaa.datio.common.naming.PlayerOutput;
+import com.typesafe.config.Config;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -8,10 +8,6 @@ import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.expressions.Window;
 import org.apache.spark.sql.expressions.WindowSpec;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 import static minsait.ttaa.datio.common.Common.*;
 import static minsait.ttaa.datio.common.naming.PlayerInput.*;
@@ -21,14 +17,21 @@ import static org.apache.spark.sql.functions.*;
 public class Transformer extends Writer {
     private SparkSession spark;
 
-    public Transformer(@NotNull SparkSession spark) {
+    public Transformer(@NotNull SparkSession spark, Config config) {
         this.spark = spark;
+
         Dataset<Row> df = readInput();
 
+        df = selectPlayerOver23(df, config.getString("under23"));
+
         df = selectInitialFields(df);
+
         df = setPlayerCat(df);
+
         df = setPotentialVsOverall(df);
+
         df = filterByPlayerCatAndPotentialVsOveral(df);
+
 
         // df = cleanData(df);
         // df = exampleWindowFunction(df);
@@ -157,7 +160,8 @@ public class Transformer extends Writer {
      * @return select initial fields
      */
     private Dataset<Row> selectInitialFields(Dataset<Row> df) {
-        return df.select(shortName.column(),
+        return df.select(
+                shortName.column(),
                 longName.column(),
                 age.column(),
                 heightCm.column(),
@@ -167,5 +171,21 @@ public class Transformer extends Writer {
                 overall.column(),
                 potential.column(),
                 teamPosition.column());
+    }
+
+    /**
+     * @param df      is a DataSet with players information
+     * @param under23 if it is equal to 1 it filters out players under 23 years old
+     * @return players over 23 or full dataset
+     */
+    private Dataset<Row> selectPlayerOver23(Dataset<Row> df, String under23) {
+
+
+        if (under23.equals("1")) {
+            return df.filter(age.column().$less(23));
+        } else {
+            return df;
+        }
+
     }
 }
